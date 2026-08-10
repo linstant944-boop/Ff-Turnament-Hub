@@ -1,1 +1,235 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FF Tournament Hub</title><link rel="stylesheet" href="/style.css"><script src="https://checkout.razorpay.com/v1/checkout.js"></script></head><body><div id="app"><header><b class="logo">FF<span>HUB</span></b><div class="wallet">₹<b id="wallet">0</b></div><button onclick="show('notifications')">🔔</button></header><main id="screen"></main><nav><button onclick="show('home')">⌂<small>Home</small></button><button onclick="show('matches')">🏆<small>Matches</small></button><button onclick="show('history')">◴<small>History</small></button><button onclick="show('profile')">◉<small>Profile</small></button></nav></div><script src="/app.js"></script><script src="/admin.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FF Tournament Hub</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0f18;color:#fff;font-family:Arial,sans-serif}.app{max-width:520px;margin:auto;min-height:100vh;background:#101522}
+header{padding:16px;background:#111827;border-bottom:1px solid #29344b;position:sticky;top:0;z-index:5}.brand{font-size:22px;font-weight:800}.muted{color:#8d99ae;font-size:12px}
+.page{display:none;padding:15px 15px 90px}.page.active{display:block}.card{background:#171f2e;border:1px solid #29344b;border-radius:16px;padding:14px;margin-bottom:13px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input,select{width:100%;padding:12px;margin:5px 0 9px;border-radius:10px;border:1px solid #33405a;background:#0d1320;color:#fff}.btn{width:100%;padding:12px;border-radius:10px;background:#4d78ff;color:#fff;font-weight:700;margin-top:7px}.btn.green{background:#16a66f}.btn.red{background:#df4c58}.btn.gray{background:#29344a}.btn.small{width:auto;padding:7px 10px}
+.title{font-size:18px;font-weight:800;margin:5px 0 12px}.wallet{background:linear-gradient(135deg,#26365f,#15203a);border-radius:17px;padding:18px;margin-bottom:14px}.balance{font-size:30px;font-weight:800;margin:6px 0}
+.hero{width:100%;height:145px;object-fit:cover;border-radius:12px;background:#202a3d}.match-title{font-size:17px;font-weight:800;margin-top:9px}.stat{font-size:11px;color:#98a5ba}.stat b{display:block;color:#fff;font-size:14px;margin-top:3px}.badge{padding:5px 8px;border-radius:8px;font-size:11px;background:#244c3a}.live{background:#a82432}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#111827;border-top:1px solid #29344b;z-index:10}.nav button{background:none;color:#8996ab;padding:11px 2px;font-size:11px}.nav button.active{color:#7090ff}
+.modal{display:none;position:fixed;inset:0;background:#000b;z-index:30;padding:18px;overflow:auto}.modal.show{display:block}.modalbox{max-width:500px;margin:35px auto;background:#141c2b;border:1px solid #33405a;border-radius:18px;padding:17px}
+.slotgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}.slot{background:#29344a;padding:9px 2px;text-align:center;border-radius:8px;font-size:12px}.slot.booked{background:#762d38}.slot input{display:none}.slot:has(input:checked){background:#4d78ff}
+.toast{display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:100;background:#25324a;padding:12px 18px;border-radius:10px}.hide{display:none!important}hr{border:0;border-top:1px solid #2b364d}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">🔥 FF Tournament Hub</div><div class="muted">Tournament • Wallet • Matches</div></header>
+
+<section id="authPage" class="page active">
+<div class="card">
+<div class="title" id="authTitle">Create Account</div>
+<div id="registerFields"><input id="regName" placeholder="Full Name"><input id="regGame" placeholder="Free Fire Game Name"><input id="regMobile" placeholder="Mobile Number"></div>
+<input id="authEmail" type="email" placeholder="Email ID"><input id="authPassword" type="password" placeholder="Password">
+<button class="btn" id="authBtn">Sign Up</button><button class="btn gray" id="authSwitch">Already have an account? Login</button><button class="btn gray" id="adminBtn">Admin Login</button>
+</div>
+</section>
+
+<main id="mainApp" class="hide">
+<section id="homePage" class="page active">
+<div class="wallet"><div class="muted">Wallet Balance</div><div class="balance">₹<span id="walletBalance">0.00</span></div><div class="grid2"><button class="btn green" onclick="openAddMoney()">+ Add Money</button><button class="btn" onclick="openWithdraw()">Withdrawal</button></div></div>
+<div class="row"><div class="title">Live & Upcoming</div><button class="btn small gray" onclick="loadMatches()">Refresh</button></div><div id="homeMatches"></div>
+</section>
+<section id="matchesPage" class="page"><div class="title">Matches</div><div id="allMatches"></div></section>
+<section id="historyPage" class="page"><div class="title">History</div><div id="historyBox"></div></section>
+<section id="profilePage" class="page"><div class="card"><div class="title">Profile</div><div id="profileBox"></div><button class="btn red" onclick="logout()">Logout</button></div></section>
+</main>
+
+<nav id="bottomNav" class="nav hide"><button onclick="showPage('homePage')">🏠<br>Home</button><button onclick="showPage('matchesPage')">🎮<br>Match</button><button onclick="showPage('historyPage')">📜<br>History</button><button onclick="showPage('profilePage')">👤<br>Profile</button></nav>
+
+<div id="joinModal" class="modal"><div class="modalbox"><div class="row"><div class="title">Join Match</div><button class="btn small gray" onclick="closeModal('joinModal')">✕</button></div><div id="joinInfo"></div><input id="teamName" placeholder="Enter Team Name"><div class="muted">Select one free slot from 1 to 50.</div><div id="slotGrid" class="slotgrid"></div><button class="btn green" onclick="registerTeam()">Register Team & Join</button></div></div>
+
+<div id="roomModal" class="modal"><div class="modalbox"><div class="title">Room ID & Password</div><div id="roomBox"></div><button class="btn gray" onclick="closeModal('roomModal')">Close</button></div></div>
+
+<div id="moneyModal" class="modal"><div class="modalbox"><div class="title">Add Money</div><input id="moneyAmount" type="number" min="10" placeholder="Amount ₹"><div id="qrArea"></div><button class="btn" onclick="razorpayPay()">Pay with Razorpay</button><button class="btn gray" onclick="manualPayment()">Manual QR Payment</button><button class="btn gray" onclick="closeModal('moneyModal')">Close</button></div></div>
+
+<div id="withdrawModal" class="modal"><div class="modalbox"><div class="title">Withdrawal</div><input id="withdrawAmount" type="number" min="50" placeholder="Amount ₹"><input id="withdrawUpi" placeholder="UPI ID"><button class="btn green" onclick="withdrawMoney()">Submit</button><button class="btn gray" onclick="closeModal('withdrawModal')">Cancel</button></div></div>
+
+<div id="adminLoginModal" class="modal"><div class="modalbox"><div class="title">Admin Login</div><input id="adminEmail" placeholder="Admin Email"><input id="adminPassword" type="password" placeholder="Admin Password"><button class="btn" onclick="adminLogin()">Login</button><button class="btn gray" onclick="closeModal('adminLoginModal')">Cancel</button></div></div>
+
+<div id="adminApp" class="hide">
+<section class="page active">
+<div class="row"><div class="title">Admin Dashboard</div><button class="btn small gray" onclick="location.reload()">Logout</button></div>
+<div class="card"><div class="title">Create Match</div><input id="mName" placeholder="Match Name"><input id="mImage" placeholder="Image URL"><input id="mStart" type="datetime-local"><div class="grid2"><input id="mPrize" type="number" placeholder="Prize Pool ₹"><input id="mEntry" type="number" placeholder="Entry Fee ₹"><input id="mKill" type="number" placeholder="Per Kill ₹"><input id="mMax" type="number" value="50" placeholder="Slots"></div><div class="grid2"><select id="mType"><option>Solo</option><option>Duo</option><option>Squad</option></select><select id="mMap"><option>Bermuda</option><option>Purgatory</option><option>Kalahari</option><option>Alpine</option></select></div><select id="mStatus"><option>UPCOMING</option><option>LIVE</option><option>RESULT</option></select><button class="btn green" onclick="saveMatch()">Create Match</button></div>
+<div class="card"><div class="title">Payment / Manual QR</div><label>Enabled <input id="payEnabled" type="checkbox" checked></label><input id="payMin" type="number" value="10" placeholder="Min ₹"><input id="payMax" type="number" value="10000" placeholder="Max ₹"><input id="payQR" placeholder="QR Image URL"><button class="btn" onclick="savePaymentSettings()">Save</button></div>
+<div class="card"><div class="title">Support</div><input id="supportWA" placeholder="WhatsApp"><input id="supportMsg" placeholder="Support message"><button class="btn" onclick="saveSupport()">Save Support</button></div>
+<div class="card"><div class="title">Notification</div><input id="noteUid" placeholder="User ID (blank = all)"><input id="noteTitle" placeholder="Title"><input id="noteMsg" placeholder="Message"><button class="btn" onclick="sendNotification()">Send</button></div>
+<div class="card"><div class="title">Matches</div><div id="adminMatches"></div></div><div class="card"><div class="title">Withdrawals</div><div id="adminWithdrawals"></div></div>
+</section>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+let user=JSON.parse(localStorage.getItem('ff_user')||'null'), currentMatch=null,selectedSlot=null,registerMode=true;
+const $=x=>document.getElementById(x);
+function toast(x){$('toast').textContent=x;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2500)}
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+async function api(url,opt={}){let r=await fetch(url,{headers:{'Content-Type':'application/json'},...opt}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Request failed');return d}
+function closeModal(id){$(id).classList.remove('show')}function openModal(id){$(id).classList.add('show')}
+$('authSwitch').onclick=()=>{registerMode=!registerMode;$('authTitle').textContent=registerMode?'Create Account':'Login';$('authBtn').textContent=registerMode?'Sign Up':'Login';$('registerFields').classList.toggle('hide',!registerMode);$('authSwitch').textContent=registerMode?'Already have an account? Login':'New user? Sign Up'};
+$('authBtn').onclick=async()=>{try{let d;if(registerMode)d=await api('/api/register',{method:'POST',body:JSON.stringify({name:$('regName').value,gameName:$('regGame').value,mobile:$('regMobile').value,email:$('authEmail').value,password:$('authPassword').value})});else d=await api('/api/login',{method:'POST',body:JSON.stringify({email:$('authEmail').value,password:$('authPassword').value})});user=d.user;localStorage.setItem('ff_user',JSON.stringify(user));enterApp();toast(registerMode?'Registration successful':'Login successful')}catch(e){toast(e.message)}};
+$('adminBtn').onclick=()=>openModal('adminLoginModal');
+function enterApp(){$('authPage').classList.add('hide');$('mainApp').classList.remove('hide');$('bottomNav').classList.remove('hide');refreshWallet();loadMatches();loadProfile();setInterval(refreshWallet,10000);setInterval(checkNotifications,15000)}
+function showPage(id){document.querySelectorAll('#mainApp .page').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');if(id==='historyPage')loadHistory();if(id==='profilePage')loadProfile();if(id==='matchesPage')loadMatches()}
+async function refreshWallet(){if(!user)return;try{let u=await api('/api/user/'+user.id);user={...user,...u};localStorage.setItem('ff_user',JSON.stringify(user));$('walletBalance').textContent=Number(u.wallet||0).toFixed(2)}catch(e){}}
+async function loadProfile(){try{let u=await api('/api/user/'+user.id);$('profileBox').innerHTML='<b>'+esc(u.name)+'</b><hr>Game Name: '+esc(u.gameName)+'<br>Email: '+esc(u.email)+'<br>Mobile: '+esc(u.mobile)+'<br><span class="muted">User ID: '+esc(u.id)+'</span>'}catch(e){}}
+function timer(d){let t=new Date(d).getTime()-Date.now();if(t<=0)return'LIVE';let s=Math.floor(t/1000),day=Math.floor(s/86400);s%=86400;let h=Math.floor(s/3600);s%=3600;let m=Math.floor(s/60);s%=60;return(day?day+'d ':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function card(m){let live=m.status==='LIVE';return '<div class="card"><img class="hero" src="'+esc(m.image||'https://placehold.co/900x450/182238/ffffff?text=FF+Tournament')+'" onerror="this.src=\'https://placehold.co/900x450/182238/ffffff?text=FF+Tournament\'"><div class="row"><div class="match-title">'+esc(m.name||'Tournament')+'</div><span class="badge '+(live?'live':'')+'">'+(live?'🔴 LIVE':'UPCOMING')+'</span></div><div class="grid2"><div class="stat">Start Date<b>'+ (m.startAt?new Date(m.startAt).toLocaleDateString():'-')+'</b></div><div class="stat">Countdown<b>'+ (m.startAt?timer(m.startAt):'-')+'</b></div><div class="stat">Prize Pool<b>₹'+Number(m.prizePool||0)+'</b></div><div class="stat">Entry Fee<b>₹'+Number(m.entryFee||0)+'</b></div><div class="stat">Map<b>'+esc(m.map||'Bermuda')+'</b></div><div class="stat">Type / Per Kill<b>'+esc(m.type||'Solo')+' / ₹'+Number(m.perKill||0)+'</b></div><div class="stat">Joined<b>'+Number(m.joinedPlayers||0)+'/'+Number(m.maxPlayers||50)+'</b></div></div><div id="act_'+m.id+'"></div></div>'}
+async function loadMatches(){try{let a=await api('/api/matches');let h=a.map(card).join('')||'<div class="card muted">No matches available.</div>';$('homeMatches').innerHTML=h;$('allMatches').innerHTML=h;for(let m of a)actions(m)}catch(e){toast('Could not load matches')}}
+async function actions(m){let box=$('act_'+m.id);if(!box)return;try{let h=await api('/api/history/'+user.id),j=(h.joins||[]).find(x=>x.matchId===m.id);box.innerHTML=j?'<div class="grid2"><button class="btn green">✓ Joined</button><button class="btn" onclick="room(\''+m.id+'\')">View Room</button></div>':'<button class="btn" onclick="join(\''+m.id+'\')">Join</button>'}catch(e){}}
+async function join(id){try{let a=await api('/api/matches');currentMatch=a.find(x=>x.id===id);let s=await api('/api/matches/'+id+'/slots'),max=Number(currentMatch.maxPlayers||50);$('joinInfo').innerHTML='<div class="card"><b>'+esc(currentMatch.name)+'</b><br>Prize ₹'+Number(currentMatch.prizePool||0)+' • Entry ₹'+Number(currentMatch.entryFee||0)+'<br>'+esc(currentMatch.map||'Bermuda')+' • '+esc(currentMatch.type||'Solo')+'</div>';$('slotGrid').innerHTML=Array.from({length:max},(_,i)=>{let n=i+1,b=s[n];return '<label class="slot '+(b?'booked':'')+'">'+n+(b?'':'<input type="radio" name="slot" value="'+n+'" onchange="selectedSlot='+n+'">')+'</label>'}).join('');selectedSlot=null;$('teamName').value='';openModal('joinModal')}catch(e){toast(e.message)}}
+async function registerTeam(){if(!selectedSlot)return toast('Select a free slot');if(!$('teamName').value.trim())return toast('Enter team name');try{await api('/api/matches/'+currentMatch.id+'/join',{method:'POST',body:JSON.stringify({userId:user.id,slot:selectedSlot,gameName:user.gameName,teamName:$('teamName').value.trim()})});closeModal('joinModal');toast('🎉 Successfully Joined');refreshWallet();loadMatches()}catch(e){toast(e.message)}}
+async function room(id){try{let d=await api('/api/matches/'+id+'/access/'+user.id);$('roomBox').innerHTML='<div class="card">Room ID<br><b style="font-size:22px">'+esc(d.roomId)+'</b></div><div class="card">Password<br><b style="font-size:22px">'+esc(d.roomPassword)+'</b></div>';openModal('roomModal')}catch(e){toast(e.message)}}
+function openAddMoney(){openModal('moneyModal');api('/api/payment-settings').then(c=>{$('qrArea').innerHTML=c.qrImageUrl?'<div class="card"><div class="muted">Manual Payment QR</div><img class="hero" src="'+esc(c.qrImageUrl)+'"></div>':''}).catch(()=>{})}
+async function razorpayPay(){let a=Number($('moneyAmount').value);if(a<10)return toast('Minimum ₹10');try{let c=await api('/api/config'),o=await api('/api/create-order',{method:'POST',body:JSON.stringify({amount:a,userId:user.id})});if(!window.Razorpay)return toast('Razorpay SDK unavailable');new Razorpay({key:c.razorpayKeyId,amount:o.amount,currency:'INR',order_id:o.id,name:'FF Tournament Hub',description:'Wallet Add Money',handler:()=>{toast('Payment submitted. Verification pending.')}}).open()}catch(e){toast(e.message)}}
+async function manualPayment(){let a=Number($('moneyAmount').value);if(a<10)return toast('Minimum ₹10');try{let d=await api('/api/payment-intent',{method:'POST',body:JSON.stringify({userId:user.id,amount:a})});toast('Manual intent: '+d.intentId)}catch(e){toast(e.message)}}
+function openWithdraw(){openModal('withdrawModal')}
+async function withdrawMoney(){let a=Number($('withdrawAmount').value),upi=$('withdrawUpi').value.trim();if(a<50||!upi)return toast('Minimum ₹50 and UPI required');try{await api('/api/withdraw',{method:'POST',body:JSON.stringify({userId:user.id,amount:a,upi})});closeModal('withdrawModal');toast('Withdrawal submitted');refreshWallet()}catch(e){toast(e.message)}}
+async function loadHistory(){try{let d=await api('/api/history/'+user.id);$('historyBox').innerHTML='<div class="card"><b>Joined Matches</b><hr>'+(d.joins||[]).map(x=>esc(x.name)+' • Slot '+x.slot+' • Team '+esc(x.teamName||'')+' • ₹'+x.entryFee).join('<hr>')+'</div><div class="card"><b>Payments</b><hr>'+(d.payments||[]).map(x=>esc(x.paymentId)+' • ₹'+x.amount+' • '+x.status).join('<hr>')+'</div>'}catch(e){}}
+async function checkNotifications(){try{let a=await api('/api/notifications/'+user.id),last=Number(localStorage.getItem('lastNotice')||0);if(a[0]&&a[0].createdAt>last){toast('🔔 '+a[0].title);localStorage.setItem('lastNotice',a[0].createdAt)}}catch(e){}}
+function logout(){localStorage.removeItem('ff_user');location.reload()}
+
+async function adminLogin(){try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({email:$('adminEmail').value,password:$('adminPassword').value})});closeModal('adminLoginModal');$('authPage').classList.add('hide');$('mainApp').classList.add('hide');$('bottomNav').classList.add('hide');$('adminApp').classList.remove('hide');loadAdmin();toast('Admin login successful')}catch(e){toast(e.message)}}
+async function loadAdmin(){try{let m=await api('/api/admin/matches');$('adminMatches').innerHTML=m.map(x=>'<div class="card"><b>'+esc(x.name)+'</b><br>'+x.status+' • Entry ₹'+x.entryFee+'</div>').join('')||'<span class="muted">No matches</span>';let w=await api('/api/admin/withdrawals');$('adminWithdrawals').innerHTML=w.map(x=>'<div class="card">'+esc(x.userId)+' • ₹'+x.amount+' • '+esc(x.upi)+' • '+x.status+(x.status==='PENDING'?'<div class="grid2"><button class="btn green" onclick="wd(\''+x.userId+'\',\''+x.id+'\',\'APPROVED\')">Approve</button><button class="btn red" onclick="wd(\''+x.userId+'\',\''+x.id+'\',\'REJECTED\')">Reject</button></div>':'')+'</div>').join('')||'<span class="muted">No withdrawals</span>'}catch(e){toast(e.message)}}
+async function saveMatch(){try{await api('/api/matches',{method:'POST',body:JSON.stringify({name:$('mName').value,image:$('mImage').value,startAt:$('mStart').value,prizePool:Number($('mPrize').value||0),entryFee:Number($('mEntry').value||0),perKill:Number($('mKill').value||0),maxPlayers:Number($('mMax').value||50),type:$('mType').value,map:$('mMap').value,status:$('mStatus').value})});toast('Match created');loadAdmin()}catch(e){toast(e.message)}}
+async function wd(uid,id,status){try{await api('/api/admin/withdrawals/'+uid+'/'+id,{method:'POST',body:JSON.stringify({status})});loadAdmin();toast('Updated')}catch(e){toast(e.message)}}
+async function savePaymentSettings(){try{await api('/api/admin/payment-settings',{method:'POST',body:JSON.stringify({enabled:$('payEnabled').checked,minAmount:Number($('payMin').value),maxAmount:Number($('payMax').value),qrImageUrl:$('payQR').value})});toast('Payment settings saved')}catch(e){toast(e.message)}}
+async function saveSupport(){try{await api('/api/admin/support',{method:'POST',body:JSON.stringify({whatsapp:$('supportWA').value,message:$('supportMsg').value})});toast('Support saved')}catch(e){toast(e.message)}}
+async function sendNotification(){try{await api('/api/admin/notify',{method:'POST',body:JSON.stringify({userId:$('noteUid').value,title:$('noteTitle').value,message:$('noteMsg').value})});toast('Notification sent')}catch(e){toast(e.message)}}
+if(user)enterApp();
+</script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!-- ADMIN ROOM ID / PASSWORD EDITOR -->
+<section id="admin-room-editor" class="panel" style="display:none;margin:20px 0;padding:16px;border-radius:16px;">
+  <h2>🔐 Admin: Room ID & Password</h2>
+  <p style="opacity:.75">Select a match and update its Room ID / Password. Users who joined that match can view the credentials.</p>
+
+  <label for="adminRoomMatch">Match</label>
+  <select id="adminRoomMatch" style="width:100%;padding:12px;margin:8px 0 12px;border-radius:10px;">
+    <option value="">Select match</option>
+  </select>
+
+  <label for="adminRoomId">Room ID</label>
+  <input id="adminRoomId" type="text" placeholder="Enter Room ID"
+         style="width:100%;padding:12px;margin:8px 0 12px;border-radius:10px;box-sizing:border-box;">
+
+  <label for="adminRoomPassword">Room Password</label>
+  <input id="adminRoomPassword" type="text" placeholder="Enter Room Password"
+         style="width:100%;padding:12px;margin:8px 0 12px;border-radius:10px;box-sizing:border-box;">
+
+  <button id="saveAdminRoomBtn" type="button" style="width:100%;padding:13px;border:0;border-radius:10px;">
+    💾 Save Room ID & Password
+  </button>
+  <div id="adminRoomMsg" style="margin-top:10px;"></div>
+</section>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const editor = $("admin-room-editor");
+  const select = $("adminRoomMatch");
+  const roomId = $("adminRoomId");
+  const roomPassword = $("adminRoomPassword");
+  const saveBtn = $("saveAdminRoomBtn");
+  const msg = $("adminRoomMsg");
+
+  function isAdmin() {
+    try {
+      return localStorage.getItem("ff_admin") === "true" ||
+             localStorage.getItem("admin") === "true" ||
+             localStorage.getItem("isAdmin") === "true";
+    } catch (_) { return false; }
+  }
+
+  async function loadMatches() {
+    if (!select) return;
+    try {
+      const r = await fetch("/api/admin/matches");
+      if (!r.ok) throw new Error("Unable to load matches");
+      const matches = await r.json();
+
+      select.innerHTML = '<option value="">Select match</option>';
+      matches.forEach(m => {
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = (m.name || m.matchName || m.title || "Match") + " — " + m.id;
+        o.dataset.roomId = m.roomId || "";
+        o.dataset.roomPassword = m.roomPassword || "";
+        select.appendChild(o);
+      });
+    } catch (e) {
+      msg.textContent = "❌ " + e.message;
+    }
+  }
+
+  if (select) {
+    select.addEventListener("change", function () {
+      const o = select.options[select.selectedIndex];
+      roomId.value = o?.dataset.roomId || "";
+      roomPassword.value = o?.dataset.roomPassword || "";
+      msg.textContent = "";
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async function () {
+      const matchId = select.value;
+      if (!matchId) {
+        msg.textContent = "⚠️ Select a match first.";
+        return;
+      }
+
+      saveBtn.disabled = true;
+      msg.textContent = "Saving...";
+
+      try {
+        const r = await fetch("/api/matches/" + encodeURIComponent(matchId) + "/room", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: roomId.value.trim(),
+            roomPassword: roomPassword.value.trim()
+          })
+        });
+
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || "Save failed");
+
+        const o = select.options[select.selectedIndex];
+        if (o) {
+          o.dataset.roomId = roomId.value.trim();
+          o.dataset.roomPassword = roomPassword.value.trim();
+        }
+
+        msg.textContent = "✅ Room ID & Password updated successfully.";
+      } catch (e) {
+        msg.textContent = "❌ " + e.message;
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  // If this index page is being used as the admin UI, expose the editor.
+  if (isAdmin()) {
+    editor.style.display = "block";
+    loadMatches();
+  }
+
+  // Can be called by an existing admin-login script after successful login.
+  window.showAdminRoomEditor = function () {
+    editor.style.display = "block";
+    loadMatches();
+  };
+})();
+</script>
+
+</body>
+</html>
