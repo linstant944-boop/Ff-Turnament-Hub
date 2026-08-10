@@ -1,0 +1,1 @@
+{"name":"ff-tournament-hub","version":"1.0.0","private":true,"scripts":{"start":"node server.js"},"dependencies":{"express":"^4.21.2","firebase-admin":"^13.0.2","razorpay":"^2.9.6","dotenv":"^16.4.7"}}
